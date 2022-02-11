@@ -1,3 +1,0 @@
-﻿  main.cpp
-D:\Users\jakob\source\repos\PlotterG\PlotterG\main.cpp(5,35): warning C4326: return type of 'main' should be 'int' instead of 'void'
-LINK : fatal error LNK1104: cannot open file 'D:\Users\jakob\source\repos\PlotterG\x64\Debug\PlotterG.exe'
