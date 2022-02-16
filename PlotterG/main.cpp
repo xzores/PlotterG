@@ -26,15 +26,16 @@ static const GLfloat g_vertex_buffer_data[] = {
 };
 
 
-
 struct Settings {
 	
 	int horizontal_views = 8;
 	int vertical_views = 5;
 	int number_of_channels = 1;
 	int bitsize = 32;
-	int view_buffer_size = 10000;
+	int view_buffer_size = 100000;
 	int serial_speed = 115200;
+	float min_value = -std::pow(2,15);
+	float max_value = std::pow(2, 15);
 	bool save_settings = true;
 	float view_outer_margin = 0.01;
 	float view_inner_margin = 0.005;
@@ -58,7 +59,7 @@ struct Mesh {
 
 	float pos_x, pos_y, size_x, size_y;
 
-	void init(const GLuint& shader_ID) {
+	void init(const GLuint& shader_ID, const int& size) {
 
 		pos_ID = glGetUniformLocation(shader_ID, "position");
 		size_ID = glGetUniformLocation(shader_ID, "scale");
@@ -95,6 +96,9 @@ struct Mesh {
 		);
 		glBindBuffer(GL_ARRAY_BUFFER, 0); //unbind VBO
 		glBindVertexArray(0); //unbind VAO
+
+		positions.resize(size * 2);
+		colors.resize(size * 3);
 	}
 
 
@@ -117,13 +121,13 @@ struct Mesh {
 		upload_color_data();
 	}
 
-	void render(const GLenum& render_mode) {
+	void render(const GLenum& render_mode, const int& first, const int& last) {
 
 		glUniform2f(pos_ID, pos_x, pos_y);
 		glUniform2f(size_ID, size_x, size_y);
 
 		glBindVertexArray(VAO);
-		glDrawArrays(render_mode, 0, positions.size()/2);
+		glDrawArrays(render_mode, first, last - first);
 		glBindVertexArray(0);
 	}
 
@@ -141,13 +145,13 @@ public:
 
 	Mesh background_mesh;
 	Mesh data_mesh;
-	
+
 	void init(const int& buffer_size, const GLuint& shader_ID) {
-		
+
 		this->buffer_size = buffer_size;
 
-		background_mesh.init(shader_ID);
-		data_mesh.init(shader_ID);
+		background_mesh.init(shader_ID, 0);
+		data_mesh.init(shader_ID, buffer_size);
 	}
 
 	void set_data() {
@@ -156,14 +160,35 @@ public:
 	}
 
 	void render() {
-		background_mesh.render(GL_TRIANGLES);
+
+		background_mesh.render(GL_TRIANGLES, 0, background_mesh.positions.size() / 2);
 		glClear(GL_DEPTH_BUFFER_BIT);
-		data_mesh.render(GL_LINE_STRIP);
+
+
+		data_mesh.render(GL_LINE_STRIP, 0, background_mesh.positions.size() / 2);
+
 	}
 
 
-	void add_data_points(std::vector<float>);
-	
+	void add_data_points(const std::vector<float>& data_points, const Settings& settings) {
+		
+		for (int i = 0; i < std::min(data_points.size(), (data_mesh.positions.size() - start_index)/2); i++) {
+			
+			float v = ((float)data_points[i] / (settings.max_value - settings.min_value)) * 2;
+			data_mesh.positions[start_index * 2 + 1] = 0;
+			start_index++;
+
+			//printf("%i\n", start_index);
+			if (start_index * 2 >= data_mesh.positions.size() - 1) {
+				start_index = 0;
+			}
+
+		}
+
+		data_mesh.upload_data();
+
+	}
+
 
 	void set_render_dimensions(float pos_x, float pos_y, float size_x, float size_y) {
 		
@@ -244,7 +269,6 @@ int main(int argc, char* argv[]) {
 	auto window_size_callback = [](GLFWwindow* window, int width, int height) {
 		glViewport(0,0,width,height);
 	};
-
 
 	glfwSetErrorCallback(error_callback);
 	
@@ -349,8 +373,12 @@ int main(int argc, char* argv[]) {
 				for (int i = 0; i < settings.view_buffer_size; i+=2) {
 
 					new_view.data_mesh.positions.push_back(i * k * 2 * (1 - settings.view_inner_margin - settings.view_outer_margin) - 1 + (settings.view_inner_margin + settings.view_outer_margin));
-					new_view.data_mesh.positions.push_back(0);
+					
+					//float v = ((((float)rand()) / (float)RAND_MAX) * (settings.max_value - settings.min_value)) + settings.min_value;
+					float v = 0;
 
+					new_view.data_mesh.positions.push_back((v / (settings.max_value - settings.min_value)) * 2);
+					
 					new_view.data_mesh.colors.push_back(r);
 					new_view.data_mesh.colors.push_back(g);
 					new_view.data_mesh.colors.push_back(b);
@@ -371,13 +399,26 @@ int main(int argc, char* argv[]) {
 	while (!glfwWindowShouldClose(window))
 	{
 
+
+
+
 		///////////////////////// RENDERING /////////////////////////
 
 		glClear(GL_COLOR_BUFFER_BIT);
 		
 		for (int i = 0; i < views.size(); i++) {
+
+			////////TODO DELETE////////
+			//float v = ((((float)rand()) / (float)RAND_MAX) * (settings.max_value - settings.min_value)) + settings.min_value;
+			//std::vector<float> new_data = { v, v, v, v, v, v, v, v, v, v};
+
+			//views[i].add_data_points(new_data, settings);
+			//////////////////////////
+
 			views[i].render();
+
 		}
+		_sleep(10);
 
 		/////////////////////////////////////////////////////////////
 
