@@ -32,7 +32,7 @@ struct Settings {
 	int vertical_views = 5;
 	int number_of_channels = 1;
 	int bitsize = 32;
-	int view_buffer_size = 100000;
+	int view_buffer_size = 10000;
 	int serial_speed = 115200;
 	float min_value = -std::pow(2,15);
 	float max_value = std::pow(2, 15);
@@ -59,7 +59,7 @@ struct Mesh {
 
 	float pos_x, pos_y, size_x, size_y;
 
-	void init(const GLuint& shader_ID, const int& size) {
+	void init(const GLuint& shader_ID) {
 
 		pos_ID = glGetUniformLocation(shader_ID, "position");
 		size_ID = glGetUniformLocation(shader_ID, "scale");
@@ -97,8 +97,6 @@ struct Mesh {
 		glBindBuffer(GL_ARRAY_BUFFER, 0); //unbind VBO
 		glBindVertexArray(0); //unbind VAO
 
-		positions.resize(size * 2);
-		colors.resize(size * 3);
 	}
 
 
@@ -150,8 +148,8 @@ public:
 
 		this->buffer_size = buffer_size;
 
-		background_mesh.init(shader_ID, 0);
-		data_mesh.init(shader_ID, buffer_size);
+		background_mesh.init(shader_ID);
+		data_mesh.init(shader_ID);
 	}
 
 	void set_data() {
@@ -165,7 +163,7 @@ public:
 		glClear(GL_DEPTH_BUFFER_BIT);
 
 
-		data_mesh.render(GL_LINE_STRIP, 0, background_mesh.positions.size() / 2);
+		data_mesh.render(GL_LINE_STRIP, 0, data_mesh.positions.size() / 2);
 
 	}
 
@@ -175,7 +173,7 @@ public:
 		for (int i = 0; i < std::min(data_points.size(), (data_mesh.positions.size() - start_index)/2); i++) {
 			
 			float v = ((float)data_points[i] / (settings.max_value - settings.min_value)) * 2;
-			data_mesh.positions[start_index * 2 + 1] = 0;
+			data_mesh.positions[data_mesh.positions.size() - (start_index * 2 + 1) ] = v;
 			start_index++;
 
 			//printf("%i\n", start_index);
@@ -373,11 +371,7 @@ int main(int argc, char* argv[]) {
 				for (int i = 0; i < settings.view_buffer_size; i+=2) {
 
 					new_view.data_mesh.positions.push_back(i * k * 2 * (1 - settings.view_inner_margin - settings.view_outer_margin) - 1 + (settings.view_inner_margin + settings.view_outer_margin));
-					
-					//float v = ((((float)rand()) / (float)RAND_MAX) * (settings.max_value - settings.min_value)) + settings.min_value;
-					float v = 0;
-
-					new_view.data_mesh.positions.push_back((v / (settings.max_value - settings.min_value)) * 2);
+					new_view.data_mesh.positions.push_back(0);
 					
 					new_view.data_mesh.colors.push_back(r);
 					new_view.data_mesh.colors.push_back(g);
@@ -411,14 +405,12 @@ int main(int argc, char* argv[]) {
 			////////TODO DELETE////////
 			//float v = ((((float)rand()) / (float)RAND_MAX) * (settings.max_value - settings.min_value)) + settings.min_value;
 			//std::vector<float> new_data = { v, v, v, v, v, v, v, v, v, v};
-
 			//views[i].add_data_points(new_data, settings);
 			//////////////////////////
 
 			views[i].render();
 
 		}
-		_sleep(10);
 
 		/////////////////////////////////////////////////////////////
 
