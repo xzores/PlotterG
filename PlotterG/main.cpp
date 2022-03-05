@@ -10,8 +10,14 @@
 #include <assert.h>
 #include <string>
 #include <filesystem>
+#include <iostream>
 
 #include "LoadShaders.h"
+
+
+std::vector<uint8_t> rest_buffer;
+
+
 
 
 // An array of 3 vectors which represents 3 vertices
@@ -203,8 +209,6 @@ public:
 	
 };
 
-
-
 void error_callback(int error, const char* msg) {	
 	printf(msg);
 	printf("\n");
@@ -232,7 +236,7 @@ int main(int argc, char* argv[]) {
 	std::vector<serial::PortInfo> ports = serial::list_ports();
 
 	for (int i = 0; i < ports.size(); i++) {
-		printf("found serial port: %s \n", ports[i].port.c_str());
+		printf("found serial port %i: %s \n", i, ports[i].port.c_str());
 	}
 
 	///////////////////////// ARGUMENTS /////////////////////////
@@ -390,16 +394,35 @@ int main(int argc, char* argv[]) {
 
 	setup_views();
 
+	get_port:
+	std::cout << "What port do you want to use? (write as integer)\n";
+	int port_index = 0;
+	std::cin >> port_index;
+	serial::Serial* my_serial;
+
+	try
+	{
+		my_serial = new serial::Serial(ports[port_index].port, 9600, serial::Timeout::simpleTimeout(1000));
+	}
+	catch (...)
+	{
+		printf("Cannot open port\n");
+		goto get_port;
+	}
+
+	
+
+	uint8_t read_buffer[1000];
+
 	while (!glfwWindowShouldClose(window))
 	{
-
-
-
 
 		///////////////////////// RENDERING /////////////////////////
 
 		glClear(GL_COLOR_BUFFER_BIT);
 		
+		my_serial->read(read_buffer, 1000);
+
 		for (int i = 0; i < views.size(); i++) {
 
 			////////TODO DELETE////////
